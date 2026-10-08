@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Upload your medical report and let AI explain the important information in clear, simple language. Supports multiple Indian languages.">
+    <meta name="keywords" content="health report, medical report, AI explainer, lab report, blood test, health">
+    <title>Health Report Explainer — Understand Your Reports in Simple Language</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩺</text></svg>">
+</head>
+<body>
+    <!-- Background Effects -->
+    <div class="bg-pattern" id="bgPattern"></div>
+    <div class="bg-grid"></div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Header / Navigation -->
+    <header class="header" id="mainHeader">
+        <nav class="nav-container">
+            <a href="#" class="logo" id="logoLink" aria-label="Health Report Explainer Home">
+                <span class="logo-icon">🩺</span>
+                <span>Health Report Explainer</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#home" class="active" data-nav="home">Home</a></li>
+                <li><a href="#how-it-works" data-nav="how-it-works">How It Works</a></li>
+                <li><a href="#languages" data-nav="languages">Languages</a></li>
+                <li><a href="#about" data-nav="about">About</a></li>
+                <li><a href="#" class="nav-cta" id="navExplainBtn">Explain My Report</a></li>
+            </ul>
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu">☰</button>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- PAGE: Landing / Home -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="page active" id="page-landing">
+
+            <!-- Hero Section -->
+            <section class="hero" id="home">
+                <div class="hero-badge">
+                    <span class="pulse"></span>
+                    AI-Powered Health Report Analysis
+                </div>
+                <h1>
+                    Understand Your Health Reports<br>
+                    in <span class="gradient-text">Simple Language</span>
+                </h1>
+                <p>
+                    Upload your medical report and let AI explain the important information in a clear and understandable way.
+                    Supports English, Telugu, Tamil, Hindi, and more Indian languages.
+                </p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-lg" id="heroUploadBtn">
+                        <span class="btn-icon">📄</span>
+                        Upload Report
+                    </button>
+                    <a href="#how-it-works" class="btn btn-secondary btn-lg" id="heroHowBtn">
+                        <span class="btn-icon">ℹ️</span>
+                        How It Works
+                    </a>
+                </div>
+            </section>
+
+            <!-- Features Section -->
+            <section class="section" id="features">
+                <div class="section-header">
+                    <h2>What This Tool Does</h2>
+                    <p>Your medical reports explained clearly, in your language, powered by AI</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3>Explains Test Results</h3>
+                        <p>Identifies each test, its value, reference range, and whether it's within the expected range — explained in simple words.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🌐</div>
+                        <h3>Multiple Languages</h3>
+                        <p>Get explanations in English, Telugu, Tamil, Hindi, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, and Odia.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📷</div>
+                        <h3>Reads Images & PDFs</h3>
+                        <p>Upload photos, scanned PDFs, text PDFs, or Word documents. AI vision reads even handwritten or scanned reports.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3>Privacy First</h3>
+                        <p>Your reports are processed and not permanently stored. We respect the privacy of your sensitive health information.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚠️</div>
+                        <h3>Highlights Important Findings</h3>
+                        <p>Flags results outside reference ranges and suggests when to discuss findings with your healthcare professional.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">❓</div>
+                        <h3>Doctor Discussion Guide</h3>
+                        <p>Generates relevant questions you can ask your doctor based on the findings in your report.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How It Works -->
+            <section class="section" id="how-it-works">
+                <div class="section-header">
+                    <h2>How It Works</h2>
+                    <p>Three simple steps to understand your health report</p>
+                </div>
+                <div class="steps-container">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Upload Your Report</h3>
+                            <p>Take a photo or upload a file of your medical report. We accept JPG, PNG, PDF, and Word documents up to 10 MB.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>AI Reads & Analyzes</h3>
+                            <p>Our AI extracts the information, identifies tests, values, and reference ranges, and analyzes the findings.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Get Simple Explanation</h3>
+                            <p>Receive a clear, structured explanation of what the report says in your preferred language. Switch languages anytime.</p>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 40px;">
+                    <button class="btn btn-primary btn-lg" id="stepsUploadBtn">
+                        <span class="btn-icon">🚀</span>
+                        Try It Now
+                    </button>
+                </div>
+            </section>
+
+            <!-- Supported Languages -->
+            <section class="section" id="languages">
+                <div class="section-header">
+                    <h2>Supported Languages</h2>
+                    <p>Get your report explained in your preferred language</p>
+                </div>
+                <div class="languages-grid">
+                    <div class="language-chip">English</div>
+                    <div class="language-chip">Telugu <span class="native">తెలుగు</span></div>
+                    <div class="language-chip">Tamil <span class="native">தமிழ்</span></div>
+                    <div class="language-chip">Hindi <span class="native">हिन्दी</span></div>
+                    <div class="language-chip">Kannada <span class="native">ಕನ್ನಡ</span></div>
+                    <div class="language-chip">Malayalam <span class="native">മലയാളം</span></div>
+                    <div class="language-chip">Bengali <span class="native">বাংলা</span></div>
+                    <div class="language-chip">Marathi <span class="native">मराठी</span></div>
+                    <div class="language-chip">Gujarati <span class="native">ગુજરાતી</span></div>
+                    <div class="language-chip">Punjabi <span class="native">ਪੰਜਾਬੀ</span></div>
+                    <div class="language-chip">Odia <span class="native">ଓଡ଼ିଆ</span></div>
+                </div>
+            </section>
+
+            <!-- About -->
+            <section class="section" id="about">
+                <div class="section-header">
+                    <h2>About This Tool</h2>
+                </div>
+                <div class="about-content">
+                    <p class="summary-text" style="margin-bottom: 20px;">
+                        Health Report Explainer is an AI-powered tool designed to help you understand the contents of your medical and laboratory reports. It reads your report, identifies the tests and their results, and explains them in simple, everyday language.
+                    </p>
+                    <p class="summary-text" style="margin-bottom: 20px;">
+                        This tool does <strong>not</strong> diagnose you or replace your doctor. It simply helps you better understand the information in your report, so you can have more informed conversations with your healthcare provider.
+                    </p>
+                    <div class="consent-box" style="margin-top: 24px;">
+                        <span style="font-size: 1.3rem;">⚕️</span>
+                        <p style="font-size: 0.88rem; color: var(--color-text-secondary); line-height: 1.6; margin: 0;">
+                            <strong>Medical Disclaimer:</strong> This tool provides an AI-generated explanation of the information contained in your report.
+                            It is for educational and informational purposes only and is not a medical diagnosis or a substitute for professional medical advice.
+                            Always consult a qualified healthcare professional for diagnosis and treatment.
+                            If you are experiencing severe or emergency symptoms, seek immediate medical care.
+                        </p>
+                    </div>
+                    <!-- Privacy -->
+                    <div class="consent-box privacy-box" style="margin-top: 16px;">
+                        <span style="font-size: 1.3rem;">🔒</span>
+                        <p style="font-size: 0.88rem; color: var(--secondary-text); line-height: 1.6; margin: 0;">
+                            <strong>Privacy:</strong> Uploaded medical reports may contain sensitive personal information.
+                            We follow a privacy-first approach: reports are processed for analysis and are not permanently stored.
+                            Temporary files are deleted after processing. Your patient information is not displayed unnecessarily.
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- PAGE: Upload -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="page" id="page-upload">
+            <section class="upload-section">
+                <h2>Upload Your Health Report</h2>
+                <p class="upload-subtitle">Upload a medical report and get a clear, simple explanation</p>
+
+                <!-- Upload Zone -->
+                <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload area. Click or drag and drop a file">
+                    <span class="upload-icon">📁</span>
+                    <h3>Drag & drop your report here</h3>
+                    <p class="or-text">or</p>
+                    <button class="browse-btn" id="browseBtn" type="button">
+                        📎 Browse Files
+                    </button>
+                    <p class="upload-meta">Supported: JPG, JPEG, PNG, PDF, DOC, DOCX &nbsp;|&nbsp; Maximum size: 10 MB</p>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" class="hidden" aria-label="Choose file to upload">
+                </div>
+
+                <!-- File Info (shown after selection) -->
+                <div class="file-info hidden" id="fileInfo">
+                    <span class="file-info-icon" id="fileIcon">📄</span>
+                    <div class="file-info-details">
+                        <div class="file-info-name" id="fileName">report.pdf</div>
+                        <div class="file-info-meta" id="fileMeta">PDF Document • 2.4 MB</div>
+                    </div>
+                    <button class="file-remove" id="fileRemoveBtn" title="Remove file" aria-label="Remove selected file">✕</button>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="form-group">
+                    <label for="languageSelect">Select explanation language</label>
+                    <select class="language-select" id="languageSelect" aria-label="Select explanation language">
+                        <option value="english">English</option>
+                        <option value="telugu">Telugu (తెలుగు)</option>
+                        <option value="tamil">Tamil (தமிழ்)</option>
+                        <option value="hindi">Hindi (हिन्दी)</option>
+                        <option value="kannada">Kannada (ಕನ್ನಡ)</option>
+                        <option value="malayalam">Malayalam (മലയാളം)</option>
+                        <option value="bengali">Bengali (বাংলা)</option>
+                        <option value="marathi">Marathi (मराठी)</option>
+                        <option value="gujarati">Gujarati (ગુજરાતી)</option>
+                        <option value="punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
+                        <option value="odia">Odia (ଓଡ଼ିଆ)</option>
+                    </select>
+                </div>
+
+                <!-- Consent Checkbox -->
+                <div class="consent-box">
+                    <input type="checkbox" id="consentCheckbox" aria-required="true">
+                    <label for="consentCheckbox">
+                        I understand that this tool provides AI-generated informational explanations and is <strong>not</strong> a medical diagnosis.
+                        I will consult a qualified healthcare professional for any medical decisions.
+                    </label>
+                </div>
+
+                <!-- Actions -->
+                <div class="analyze-btn-wrapper">
+                    <button class="btn btn-primary btn-lg" id="analyzeBtn" disabled>
+                        <span class="btn-icon">🔬</span>
+                        Analyze Report
+                    </button>
+                </div>
+                <div style="text-align: center; margin-top: 16px;">
+                    <button class="btn btn-ghost btn-sm" id="sampleReportBtn">
+                        <span class="btn-icon">📋</span>
+                        Try Sample Report
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- PAGE: Processing -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="page" id="page-processing">
+            <div class="processing-screen">
+                <div class="processing-spinner"></div>
+                <h2>Analyzing Your Report…</h2>
+                <p class="subtitle">This usually takes 15–30 seconds</p>
+                <div class="processing-steps" id="processingSteps">
+                    <div class="processing-step done" id="step-upload">
+                        <span class="step-icon">✓</span>
+                        <span>Uploading report</span>
+                    </div>
+                    <div class="processing-step done" id="step-read">
+                        <span class="step-icon">✓</span>
+                        <span>Reading report</span>
+                    </div>
+                    <div class="processing-step done" id="step-extract">
+                        <span class="step-icon">✓</span>
+                        <span>Extracting information</span>
+                    </div>
+                    <div class="processing-step active" id="step-analyze">
+                        <span class="step-icon">●</span>
+                        <span>Analyzing report</span>
+                    </div>
+                    <div class="processing-step pending" id="step-prepare">
+                        <span class="step-icon">○</span>
+                        <span>Preparing explanation</span>
+                    </div>
+                    <div class="processing-step pending" id="step-complete">
+                        <span class="step-icon">○</span>
+                        <span>Complete</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- PAGE: Results -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="page" id="page-results">
+            <section class="results-section">
+                <div class="results-header">
+                    <div>
+                        <h2>📋 Your Report Explanation</h2>
+                    </div>
+                    <div class="results-meta">
+                        <span class="badge" id="resultFilename">📄 report.pdf</span>
+                        <span class="badge" id="resultLanguage">🌐 English</span>
+                        <div>
+                            <select class="language-select" id="resultLanguageSelect" style="width: auto; padding: 8px 36px 8px 12px; font-size: 0.85rem;" aria-label="Change explanation language">
+                                <option value="english">English</option>
+                                <option value="telugu">Telugu (తెలుగు)</option>
+                                <option value="tamil">Tamil (தமிழ்)</option>
+                                <option value="hindi">Hindi (हिन्दी)</option>
+                                <option value="kannada">Kannada (ಕನ್ನಡ)</option>
+                                <option value="malayalam">Malayalam (മലയാളം)</option>
+                                <option value="bengali">Bengali (বাংলা)</option>
+                                <option value="marathi">Marathi (मराठी)</option>
+                                <option value="gujarati">Gujarati (ગુજરાતી)</option>
+                                <option value="punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
+                                <option value="odia">Odia (ଓଡ଼ିଆ)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-grid" id="resultsGrid">
+                    <!-- Cards are dynamically generated by JS -->
+                </div>
+
+                <div style="text-align: center; margin-top: 40px;">
+                    <button class="btn btn-primary" id="newReportBtn">
+                        <span class="btn-icon">📄</span>
+                        Analyze Another Report
+                    </button>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>🩺 Health Report Explainer &mdash; AI-Powered Report Explanation Tool</p>
+            <p class="disclaimer-footer">
+                This tool provides AI-generated informational explanations only. It is not a medical diagnosis
+                or substitute for professional medical advice. Always consult a qualified healthcare professional
+                for diagnosis and treatment. If you are experiencing severe or emergency symptoms, seek immediate medical care.
+            </p>
+        </div>
+    </footer>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
