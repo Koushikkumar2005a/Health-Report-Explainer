@@ -60,17 +60,73 @@ class RetryThenFallbackClient:
 
 
 class AIServiceTests(unittest.TestCase):
-    def test_analyze_report_uses_supported_model_and_returns_text_explanation(self):
+    def test_analyze_report_with_no_tests_uses_gemini_only_fallback(self):
         service = AIService()
         service.client = FakeClient()
 
-        report = "Patient Hb: 10.2 g/dL; reference 13.0 - 17.0; ferritin 8 ng/mL; fatigue reported."
-        analysis = asyncio.run(service.analyze_report(report, "telugu"))
+        report = "Neurosurgery report describes the reason for admission and procedure."
+        with patch(
+            "backend.services.ai_service.retrieve_report_context",
+            return_value={
+                "terms": [],
+                "tests": [],
+                "passages": [],
+                "sources": [],
+                "retrieval_status": "no_tests_detected",
+                "rag_used": False,
+            },
+        ):
+            analysis = asyncio.run(service.analyze_report(report, "telugu"))
 
         self.assertEqual(analysis["language"], "telugu")
-        self.assertIn("explanation", analysis)
-        self.assertIn("Overall Summary", analysis["explanation"])
-        self.assertEqual(service.client.models.calls[0]["model"], settings.GEMINI_MODEL)
+        self.assertEqual(analysis["retrieval_status"], "gemini_only")
+        self.assertFalse(analysis["rag_used"])
+        self.assertEqual(analysis["retrieved_sources"], [])
+        self.assertEqual(analysis["test_explanations"], [])
+        self.assertEqual(len(service.client.models.calls), 1)
+        call = service.client.models.calls[0]
+        self.assertIn(report, call["contents"])
+        self.assertIn("Telugu", call["contents"])
+        self.assertIn("general explanatory context", call["config"]["system_instruction"])
+        self.assertNotIn("response_mime_type", call["config"])
+
+    def test_empty_report_returns_clear_error_without_calling_gemini(self):
+        service = AIService()
+        service.client = FakeClient()
+
+        with self.assertRaisesRegex(ValueError, "No text could be extracted"):
+            asyncio.run(service.analyze_report("  \n ", "english"))
+
+        self.assertEqual(service.client.models.calls, [])
+
+    def test_gemini_only_api_failure_is_propagated(self):
+        service = AIService()
+        service.client = RetryThenFallbackClient(fail_fallback=True)
+        retrieval = {
+            "terms": [],
+            "tests": [],
+            "passages": [],
+            "sources": [],
+            "retrieval_status": "no_tests_detected",
+            "rag_used": False,
+        }
+
+        with (
+            patch(
+                "backend.services.ai_service.retrieve_report_context",
+                return_value=retrieval,
+            ),
+            patch.object(settings, "GEMINI_MODEL", "primary-test"),
+            patch.object(settings, "GEMINI_FALLBACK_MODEL", ""),
+            patch("backend.services.ai_service.time.sleep"),
+        ):
+            with self.assertRaises(AIServiceError):
+                asyncio.run(
+                    service.analyze_report(
+                        "A sufficiently long neurosurgery report text for analysis.",
+                        "english",
+                    )
+                )
 
     def test_retries_primary_then_uses_fallback(self):
         service = AIService()

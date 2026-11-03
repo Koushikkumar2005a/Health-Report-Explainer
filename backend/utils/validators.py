@@ -14,7 +14,7 @@ def validate_file_extension(filename: str) -> tuple[bool, str]:
     if ext not in settings.ALLOWED_EXTENSIONS:
         return False, (
             f"Unsupported file type '{ext}'. "
-            f"Please upload JPG, JPEG, PNG, PDF, DOC, or DOCX files."
+            f"Please upload JPG, JPEG, PNG, PDF, or DOCX files. Legacy DOC files are not supported."
         )
     return True, ""
 
@@ -53,7 +53,6 @@ def get_file_type(filename: str) -> str:
         ".jpeg": "JPEG Image",
         ".png": "PNG Image",
         ".pdf": "PDF Document",
-        ".doc": "Word Document",
         ".docx": "Word Document",
     }
     return type_map.get(ext, "Unknown")

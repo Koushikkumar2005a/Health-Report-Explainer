@@ -6,7 +6,7 @@ An AI-powered web application that explains medical/health reports in simple, ea
 
 ## ✨ Features
 
-- **Upload Medical Reports**: JPG, JPEG, PNG, PDF, DOC, DOCX (up to 10 MB)
+- **Upload Medical Reports**: JPG, JPEG, PNG, PDF, DOCX (up to 10 MB; legacy DOC files are not supported)
 - **AI-Powered Analysis**: Uses Google Gemini to analyze and explain reports
 - **Multi-Language Support**: English, Telugu, Tamil, Hindi, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia
 - **Smart OCR**: Reads scanned reports and images using Gemini Vision
@@ -24,9 +24,10 @@ An AI-powered web application that explains medical/health reports in simple, ea
 | **Frontend** | HTML, CSS, JavaScript |
 | **Backend** | Python, FastAPI |
 | **AI** | Google Gemini API via the `google-genai` SDK; primary and fallback models are configured in `.env` |
-| **PDF Processing** | PyMuPDF (fitz) |
+| **PDF Processing** | PyMuPDF for reference indexing; pypdf for uploaded reports |
 | **DOCX Processing** | python-docx |
 | **Image/OCR** | Gemini Vision API + Pillow |
+| **Medical reference RAG** | Sentence Transformers (`intfloat/multilingual-e5-base`) + persistent ChromaDB |
 
 ---
 
@@ -34,7 +35,7 @@ An AI-powered web application that explains medical/health reports in simple, ea
 
 ### Prerequisites
 
-- **Python 3.9+** installed ([Download Python](https://www.python.org/downloads/))
+- **Python 3.10+** installed ([Download Python](https://www.python.org/downloads/))
 - **Google Gemini API Key** ([Get API Key](https://aistudio.google.com/app/apikey))
 
 ### Step 1: Clone/Download the project
@@ -81,6 +82,38 @@ Open `.env` and replace `your_gemini_api_key_here` with your actual Gemini API k
 GEMINI_API_KEY=AIzaSy...your-key-here
 ```
 
+The first non-empty knowledge-base build or RAG-enabled analysis downloads the pretrained E5 embedding weights if they are not already cached. No model is trained locally. Test-specific explanations are generated only when each test has retrieved evidence and Gemini returns source IDs validated for that test; without evidence, the application reports the limitation and withholds that interpretation.
+
+## 📚 Medical Reference Knowledge Base
+
+Place your own **PDF** or **TXT** references under the matching folder in `data/medical_knowledge/raw/`:
+
+```
+data/medical_knowledge/raw/
+├── CBC/
+├── Diabetes/
+├── LFT/
+├── KFT/
+├── Lipid_Profile/
+└── Thyroid/
+```
+
+Subfolders are scanned recursively. Index only trusted reference materials; uploaded patient reports are never added to this collection. Source documents and generated ChromaDB files are excluded from Git.
+
+Build or incrementally update the persistent collection:
+
+```bash
+python scripts/build_knowledge_base.py
+```
+
+Test semantic retrieval independently (this does not call Gemini):
+
+```bash
+python scripts/test_retrieval.py
+```
+
+Chunking and retrieval can be configured with `RAG_CHUNK_SIZE` (default `1000`), `RAG_CHUNK_OVERLAP` (`150`), `RAG_TOP_K` (`4`), `RAG_RELEVANCE_THRESHOLD` (`0.25`), and `RAG_CHROMA_PATH` (`data/chroma_db`). Retrieval status distinguishes an empty knowledge base, no detected tests, insufficient evidence, and successful per-test evidence validation. If evidence is unavailable, unsupported test interpretations are withheld.
+
 ---
 
 ## 🚀 Running the Application
@@ -122,10 +155,10 @@ Upload → Validate → Extract Text → AI Analysis → Structured JSON → Ren
 
 1. **Upload**: File is validated (type, size) and saved temporarily
 2. **Extract**: Text is extracted based on file type:
-   - **PDF**: PyMuPDF text extraction; falls back to Gemini Vision for scanned PDFs
+   - **PDF**: Existing PDF extraction; falls back to Gemini Vision for scanned PDFs. Reference PDFs are extracted with PyMuPDF during knowledge-base indexing.
    - **DOCX**: python-docx paragraph and table extraction
    - **Images**: Gemini Vision API reads the image
-3. **Analyze**: Extracted text + language → Gemini API with medical analysis prompt
+3. **Analyze**: Extracted text + language → test-scoped retrieval → Gemini JSON explanations with validated source IDs
 4. **Display**: Structured JSON response rendered as cards in the dashboard
 5. **Translate**: Language switch re-analyzes from extracted text for best quality
 6. **Cleanup**: Temporary files are deleted after processing
@@ -163,6 +196,7 @@ This tool provides AI-generated explanations for **educational and informational
 ```
 Health Report Explainer/
 ├── backend/
+│   ├── rag/                   # E5 embeddings, ingestion, ChromaDB, retrieval and RAG prompt context
 │   ├── __init__.py
 │   ├── main.py              # FastAPI app, routes, static serving
 │   ├── config.py             # Settings from environment variables
@@ -180,6 +214,14 @@ Health Report Explainer/
 │   └── utils/
 │       ├── __init__.py
 │       └── validators.py      # File validation utilities
+├── data/
+│   ├── medical_knowledge/
+│   │   ├── raw/               # Add trusted PDF/TXT references by category
+│   │   └── processed/
+│   └── chroma_db/             # Persistent ChromaDB files (generated)
+├── scripts/
+│   ├── build_knowledge_base.py
+│   └── test_retrieval.py
 ├── frontend/
 │   ├── index.html             # Single-page application
 │   ├── css/

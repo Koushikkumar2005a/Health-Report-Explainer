@@ -27,26 +27,43 @@ class DocumentService:
         if settings.GEMINI_API_KEY:
             self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
+    @staticmethod
+    def _log_extraction_diagnostics(method: str, text: str) -> None:
+        logger.info(
+            "Document text extraction completed "
+            "(method=%s, extracted_characters=%d, nonempty_lines=%d).",
+            method,
+            len(text),
+            sum(bool(line.strip()) for line in text.splitlines()),
+        )
+
     async def extract_text(self, file_path: str, filename: str) -> str:
         """Extract text from a document based on its file type."""
         ext = os.path.splitext(filename)[1].lower()
 
         try:
             if ext in (".jpg", ".jpeg", ".png"):
-                return await self._extract_from_image(file_path)
+                text = await self._extract_from_image(file_path)
+                self._log_extraction_diagnostics("image_ocr", text)
+                return text
             elif ext == ".pdf":
                 return await self._extract_from_pdf(file_path)
             elif ext == ".doc":
                 raise ValueError(
-                    "Legacy DOC files cannot be processed reliably in this environment. "
-                    "Please convert the file to DOCX or PDF before uploading."
+                    "Legacy DOC files are not supported. Please convert the report to DOCX or PDF."
                 )
             elif ext == ".docx":
-                return await self._extract_from_docx(file_path)
+                text = await self._extract_from_docx(file_path)
+                self._log_extraction_diagnostics("docx_extraction", text)
+                return text
             else:
                 raise ValueError(f"Unsupported file type: {ext}")
         except Exception as e:
-            logger.error(f"Text extraction failed for {filename}: {str(e)}")
+            logger.error(
+                "Text extraction failed for document type=%s (%s).",
+                ext,
+                type(e).__name__,
+            )
             raise
 
     async def _extract_from_image(self, file_path: str) -> str:
@@ -78,7 +95,7 @@ class DocumentService:
             return text
 
         except Exception as e:
-            logger.exception("Image OCR failed for file=%s", file_path)
+            logger.error("Image OCR failed (%s).", type(e).__name__)
             raise ValueError(
                 "We could not read the uploaded image. "
                 "Please upload a clearer image of your report."
@@ -98,16 +115,20 @@ class DocumentService:
                     text_parts.append(f"--- Page {page_num + 1} ---\n{text.strip()}")
 
             if has_text and len("\n".join(text_parts)) > 50:
-                return "\n\n".join(text_parts)
+                text = "\n\n".join(text_parts)
+                self._log_extraction_diagnostics("pdf_text_extraction", text)
+                return text
 
             # Scanned PDF — use Gemini Vision on the file directly
             logger.info("PDF appears scanned, using vision extraction...")
-            return await self._extract_scanned_pdf(file_path)
+            text = await self._extract_scanned_pdf(file_path)
+            self._log_extraction_diagnostics("ocr", text)
+            return text
 
         except ValueError:
             raise
         except Exception as e:
-            logger.error(f"PDF extraction failed: {str(e)}")
+            logger.error("PDF extraction failed (%s).", type(e).__name__)
             raise ValueError(
                 "We could not read the uploaded PDF. "
                 "Please ensure it is a valid PDF document."
@@ -151,7 +172,7 @@ class DocumentService:
         except ValueError:
             raise
         except Exception as e:
-            logger.exception("Scanned PDF extraction failed for file=%s", file_path)
+            logger.error("Scanned PDF extraction failed (%s).", type(e).__name__)
             raise ValueError(
                 "We could not read the scanned PDF. "
                 "Please upload a clearer version of your report."
@@ -186,7 +207,7 @@ class DocumentService:
         except ValueError:
             raise
         except Exception as e:
-            logger.error(f"DOCX extraction failed: {str(e)}")
+            logger.error("DOCX extraction failed (%s).", type(e).__name__)
             raise ValueError(
                 "We could not read the uploaded Word document. "
                 "Please ensure it is a valid DOCX file."

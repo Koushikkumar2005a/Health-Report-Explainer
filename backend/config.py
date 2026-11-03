@@ -21,13 +21,17 @@ class Settings:
     MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "10"))
     MAX_FILE_SIZE_BYTES: int = MAX_FILE_SIZE_MB * 1024 * 1024
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "temp_uploads")
+    RAG_CHROMA_PATH: str = os.getenv("RAG_CHROMA_PATH", "data/chroma_db")
+    RAG_CHUNK_SIZE: int = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
+    RAG_CHUNK_OVERLAP: int = int(os.getenv("RAG_CHUNK_OVERLAP", "150"))
+    RAG_TOP_K: int = int(os.getenv("RAG_TOP_K", "4"))
+    RAG_RELEVANCE_THRESHOLD: float = float(os.getenv("RAG_RELEVANCE_THRESHOLD", "0.25"))
 
-    ALLOWED_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".pdf", ".doc", ".docx"}
+    ALLOWED_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".pdf", ".docx"}
     ALLOWED_MIME_TYPES: set = {
         "image/jpeg",
         "image/png",
         "application/pdf",
-        "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }
 

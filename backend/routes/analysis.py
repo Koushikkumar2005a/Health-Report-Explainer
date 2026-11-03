@@ -2,6 +2,7 @@
 Health Report Explainer - Analysis Routes
 """
 import json
+import time
 import logging
 import os
 import uuid
@@ -53,17 +54,25 @@ async def analyze_report(
     language: str = Form(default="english"),
     extracted_text: str = Form(default=""),
 ):
+    start_total = time.perf_counter()
     """Analyze a report uploaded as multipart form-data or accept legacy JSON input."""
     filename = "medical_report"
     report_text = extracted_text.strip()
+    error_category = "none"
+    report_text_char_count = 0
+    gemini_response_char_count = 0
+    gemini_finish_reason = "N/A"
 
     if file is not None:
+        start_file_upload = time.perf_counter()
         filename = file.filename or filename
         valid, error = validate_file_extension(filename)
         if not valid:
             raise HTTPException(status_code=400, detail=error)
 
         content = await file.read()
+        file_upload_ms = (time.perf_counter() - start_file_upload) * 1000
+        logger.info("[PERF] file_upload_ms=%.2f", file_upload_ms)
         valid, error = validate_file_size(len(content))
         if not valid:
             raise HTTPException(status_code=400, detail=error)
@@ -77,12 +86,21 @@ async def analyze_report(
         try:
             with open(file_path, "wb") as handle:
                 handle.write(content)
+            start_extraction = time.perf_counter()
             report_text = await document_service.extract_text(file_path, safe_name)
+            extraction_ms = (time.perf_counter() - start_extraction) * 1000
+            logger.info("[PERF] extraction_ms=%.2f", extraction_ms)
         except ValueError as exc:
-            logger.exception("Upload extraction failed for %s", safe_name)
+            logger.warning(
+                "Uploaded document text extraction failed (%s).",
+                type(exc).__name__,
+            )
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
-            logger.exception("Upload processing failed for %s", safe_name)
+            logger.error(
+                "Uploaded document processing failed (%s).",
+                type(exc).__name__,
+            )
             raise HTTPException(
                 status_code=500,
                 detail="Unable to process the uploaded file. Please try again.",
@@ -92,7 +110,7 @@ async def analyze_report(
                 try:
                     os.remove(file_path)
                 except OSError:
-                    logger.warning("Could not delete temp file: %s", file_path)
+                    logger.warning("Could not delete a temporary uploaded file.")
 
     elif not report_text:
         try:
@@ -107,7 +125,14 @@ async def analyze_report(
         filename = payload.get("filename") or filename
         language = payload.get("language") or language
 
-    if not report_text or len(report_text.strip()) < 20:
+    report_text = report_text.strip()
+    if not report_text:
+        raise HTTPException(
+            status_code=400,
+            detail="No text could be extracted from the report. Please upload a readable report.",
+        )
+
+    if len(report_text.strip()) < 20:
         raise HTTPException(
             status_code=400,
             detail="The extracted text is too short to analyze. Please upload a complete medical report.",
@@ -115,24 +140,63 @@ async def analyze_report(
 
     try:
         normalized_language = _normalize_language(language)
+        report_text_char_count = len(report_text)
+        start_ai_service = time.perf_counter()
         result = await ai_service.analyze_report(
             extracted_text=report_text,
             language=normalized_language,
             report_name=filename,
+        )
+        ai_service_ms = (time.perf_counter() - start_ai_service) * 1000
+        logger.info("[PERF] ai_service_ms=%.2f", ai_service_ms)
+        gemini_response_char_count = len(result.get("explanation", ""))
+        gemini_finish_reason = result.get("finish_reason", "N/A")
+        total_ms = (time.perf_counter() - start_total) * 1000
+        logger.info(
+            "[PERF] total_ms=%.2f report_char_count=%d gemini_char_count=%d gemini_finish_reason=%s error_category=%s",
+            total_ms,
+            report_text_char_count,
+            gemini_response_char_count,
+            gemini_finish_reason,
+            error_category,
         )
         return {
             "success": True,
             "language": result["language"],
             "explanation": result["explanation"],
             "report_name": result["report_name"],
+            "test_explanations": result.get("test_explanations", []),
+            "retrieved_sources": result.get("retrieved_sources", []),
+            "rag_used": result.get("rag_used", False),
+            "retrieval_status": result.get("retrieval_status", "unavailable"),
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except AIServiceError as exc:
-        logger.exception("Analysis failed due to Gemini upstream error: %s", exc)
+        error_category = "ai_service_error"
+        total_ms = (time.perf_counter() - start_total) * 1000
+        logger.info(
+            "[PERF] total_ms=%.2f report_char_count=%d gemini_char_count=%d gemini_finish_reason=%s error_category=%s",
+            total_ms,
+            report_text_char_count,
+            gemini_response_char_count,
+            gemini_finish_reason,
+            error_category,
+        )
+        logger.error("Analysis failed due to Gemini upstream error (%s).", type(exc).__name__)
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except Exception as exc:
-        logger.exception("Unexpected analysis failure.")
+        error_category = "unexpected_error"
+        total_ms = (time.perf_counter() - start_total) * 1000
+        logger.info(
+            "[PERF] total_ms=%.2f report_char_count=%d gemini_char_count=%d gemini_finish_reason=%s error_category=%s",
+            total_ms,
+            report_text_char_count,
+            gemini_response_char_count,
+            gemini_finish_reason,
+            error_category,
+        )
+        logger.error("Unexpected analysis failure (%s).", type(exc).__name__)
         raise HTTPException(
             status_code=500,
             detail="Unable to analyze the report right now. Please try again.",
@@ -160,14 +224,18 @@ async def translate_analysis(request: TranslateRequest):
             "language": translated["language"],
             "explanation": translated["explanation"],
             "report_name": translated.get("report_name", "medical_report"),
+            "test_explanations": translated.get("test_explanations", []),
+            "retrieved_sources": translated.get("retrieved_sources", []),
+            "rag_used": translated.get("rag_used", False),
+            "retrieval_status": translated.get("retrieval_status", "unavailable"),
         }
     except AIServiceError as exc:
-        logger.exception("Translation failed due to Gemini upstream error: %s", exc)
+        logger.error("Translation failed due to Gemini upstream error (%s).", type(exc).__name__)
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        logger.exception("Unexpected translation failure.")
+        logger.error("Unexpected translation failure (%s).", type(exc).__name__)
         raise HTTPException(
             status_code=500,
             detail="Unable to translate the analysis right now. Please try again.",

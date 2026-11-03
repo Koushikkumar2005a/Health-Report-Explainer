@@ -66,7 +66,6 @@ const ALLOWED_EXTENSIONS = [
     '.jpeg',
     '.png',
     '.pdf',
-    '.doc',
     '.docx'
 ];
 
@@ -723,7 +722,7 @@ function handleFileSelect(file) {
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
 
         showToast(
-            'This file type is not supported. Please upload JPG, JPEG, PNG, PDF, DOC, or DOCX.',
+            'This file type is not supported. Please upload JPG, JPEG, PNG, PDF, or DOCX. Legacy DOC files are not supported.',
             'error'
         );
 
@@ -801,7 +800,6 @@ function handleFileSelect(file) {
         '.jpeg': '🖼️',
         '.png': '🖼️',
         '.pdf': '📕',
-        '.doc': '📘',
         '.docx': '📘'
 
     };
@@ -831,7 +829,6 @@ function handleFileSelect(file) {
         '.jpeg': 'JPEG Image',
         '.png': 'PNG Image',
         '.pdf': 'PDF Document',
-        '.doc': 'Word Document',
         '.docx': 'Word Document'
 
     };
@@ -1450,10 +1447,9 @@ async function analyzeReport(
     );
 
 
-    console.log(
-        'Sending report for analysis...',
+    console.info(
+        'Submitting report for analysis.',
         {
-            filename: state.filename,
             language: language,
             hasFile:
                 state.selectedFile !== null
@@ -1511,9 +1507,13 @@ async function analyzeReport(
         await response.json();
 
 
-    console.log(
-        'Analysis response:',
-        data
+    console.info(
+        'Report analysis completed.',
+        {
+            language: data.language || language,
+            rag_used: data.rag_used === true,
+            retrieval_status: data.retrieval_status || 'unavailable'
+        }
     );
 
 
@@ -1531,11 +1531,28 @@ async function analyzeReport(
             data.summary ||
             '',
 
+        test_explanations:
+            Array.isArray(data.test_explanations)
+                ? data.test_explanations
+                : [],
+
         report_name:
             data.report_name ||
             data.filename ||
             state.filename ||
-            'medical_report'
+            'medical_report',
+
+        retrieved_sources:
+            Array.isArray(data.retrieved_sources)
+                ? data.retrieved_sources
+                : [],
+
+        rag_used:
+            data.rag_used === true,
+
+        retrieval_status:
+            data.retrieval_status ||
+            'unavailable'
 
     };
 
@@ -1722,65 +1739,73 @@ function initResultsLanguageSwitcher() {
 
             try {
 
-                const response =
-                    await fetch(
-                        `${API_BASE}/api/translate`,
-                        {
-                            method: 'POST',
+                let data;
 
-                            headers: {
-                                'Content-Type':
-                                    'application/json'
-                            },
+                if (
+                    state.selectedFile &&
+                    state.selectedFile !== 'sample'
+                ) {
+                    data = await analyzeReport('', newLanguage);
+                } else {
+                    const response =
+                        await fetch(
+                            `${API_BASE}/api/translate`,
+                            {
+                                method: 'POST',
 
-                            body: JSON.stringify({
+                                headers: {
+                                    'Content-Type':
+                                        'application/json'
+                                },
 
-                                analysis:
-                                    state.currentAnalysis,
+                                body: JSON.stringify({
 
-                                target_language:
-                                    newLanguage,
+                                    analysis:
+                                        state.currentAnalysis,
 
-                                extracted_text:
-                                    state.extractedText
+                                    target_language:
+                                        newLanguage,
 
-                            })
+                                    extracted_text:
+                                        state.extractedText
+
+                                })
+
+                            }
+                        );
+
+
+                    if (!response.ok) {
+
+                        let message =
+                            'Translation failed.';
+
+
+                        try {
+
+                            const errorData =
+                                await response.json();
+
+
+                            message =
+                                errorData.detail ||
+                                errorData.message ||
+                                message;
+
+                        } catch {
+
+                            // Ignore
 
                         }
-                    );
 
 
-                if (!response.ok) {
-
-                    let message =
-                        'Translation failed.';
-
-
-                    try {
-
-                        const errorData =
-                            await response.json();
-
-
-                        message =
-                            errorData.detail ||
-                            errorData.message ||
-                            message;
-
-                    } catch {
-
-                        // Ignore
+                        throw new Error(message);
 
                     }
 
 
-                    throw new Error(message);
-
+                    data = await response.json();
                 }
-
-
-                const data =
-                    await response.json();
 
 
                 state.currentAnalysis =
@@ -1810,6 +1835,7 @@ function initResultsLanguageSwitcher() {
                 state.currentLanguage =
                     oldLanguage;
 
+                select.value = oldLanguage;
 
                 showToast(
                     error.message ||
@@ -1954,6 +1980,70 @@ function renderResults(analysis) {
             )
         )
     );
+
+    const retrievalStatus =
+        response.retrieval_status || 'unavailable';
+    const retrievalMessages = {
+        success: 'Every detected test has a validated supporting medical reference.',
+        gemini_only: 'No matching medical references were found in the existing knowledge base. This explanation was generated using Gemini based on the uploaded document.',
+        empty_knowledge_base: 'The medical reference library is empty. No test-specific interpretation was generated.',
+        no_tests_detected: 'No supported medical test names were detected. No test-specific interpretation was generated.',
+        insufficient_evidence: 'One or more tests did not have validated supporting evidence. Interpretations were withheld for those tests.',
+        used: 'Relevant medical reference passages were retrieved and provided to the explanation model.',
+        no_relevant_context: 'No sufficiently relevant medical reference passages were found for this report.',
+        unavailable: 'Medical reference retrieval was unavailable. Gemini generated this explanation from the uploaded document; no knowledge-base sources were used.'
+    };
+    grid.appendChild(
+        createCard(
+            '📚',
+            'Medical reference status',
+            `<p class="summary-text">${escapeHtml(
+                retrievalMessages[retrievalStatus] ||
+                retrievalMessages.unavailable
+            )}</p>`
+        )
+    );
+
+    const testExplanations = Array.isArray(response.test_explanations)
+        ? response.test_explanations
+        : [];
+    if (testExplanations.length > 0) {
+        const testItems = testExplanations.map((test) => {
+            const supported = test.evidence_status === 'supported';
+            const evidenceText = supported
+                ? `Supported by source IDs: ${(test.source_ids || []).map(escapeHtml).join(', ')}`
+                : 'Insufficient evidence; no test-specific interpretation was included.';
+            return `<li><strong>${escapeHtml(test.test_name || 'Unknown test')}</strong>: ${evidenceText}</li>`;
+        }).join('');
+        grid.appendChild(
+            createCard(
+                '🧪',
+                'Per-test evidence',
+                `<ul>${testItems}</ul>`
+            )
+        );
+    }
+
+    const retrievedSources = Array.isArray(response.retrieved_sources)
+        ? response.retrieved_sources
+        : [];
+    if (retrievedSources.length > 0) {
+        const sourceItems = retrievedSources.map((source) => {
+            const page = source.page_number || 'unknown';
+            const score = Number(source.relevance_score);
+            const scoreText = Number.isFinite(score)
+                ? ` — relevance ${score.toFixed(3)}`
+                : '';
+            return `<li>${escapeHtml(source.test_name || 'Test')}: ${escapeHtml(source.source_filename || 'Unknown source')} — ${escapeHtml(source.category || 'Uncategorized')}, page ${escapeHtml(String(page))}${scoreText ? escapeHtml(scoreText) : ''} — ID ${escapeHtml(source.source_id || 'unknown')}</li>`;
+        }).join('');
+        grid.appendChild(
+            createCard(
+                '🔎',
+                'Retrieved sources',
+                `<ul>${sourceItems}</ul>`
+            )
+        );
+    }
 
 
     // --------------------------------------------------

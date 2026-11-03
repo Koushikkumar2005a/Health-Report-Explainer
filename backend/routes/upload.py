@@ -54,10 +54,10 @@ async def upload_file(file: UploadFile = File(...)):
         extracted_text = await document_service.extract_text(file_path, safe_name)
 
     except ValueError as exc:
-        logger.exception("Upload extraction failed for %s", safe_name)
+        logger.warning("Uploaded document text extraction failed (%s).", type(exc).__name__)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        logger.exception("Upload processing failed for %s", safe_name)
+        logger.error("Uploaded document processing failed (%s).", type(exc).__name__)
         raise HTTPException(
             status_code=500,
             detail="Unable to process the uploaded file. Please try again.",
@@ -68,7 +68,7 @@ async def upload_file(file: UploadFile = File(...)):
             try:
                 os.remove(file_path)
             except Exception:
-                logger.warning(f"Could not delete temp file: {file_path}")
+                logger.warning("Could not delete a temporary uploaded file.")
 
     return {
         "success": True,
