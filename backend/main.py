@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from backend.config import settings
-from backend.rag.vector_store import validate_knowledge_base
+from backend.rag.vector_store import validate_knowledge_base_metadata
 from backend.routes import analysis, upload
 
 # Configure logging
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Validate the bundled medical knowledge index before serving requests."""
     try:
-        validate_knowledge_base()
+        validate_knowledge_base_metadata()
     except Exception:
         logger.exception(
             "Medical knowledge-base validation failed; application startup aborted."

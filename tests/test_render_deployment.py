@@ -22,7 +22,7 @@ class RenderDeploymentTests(unittest.TestCase):
         self.assertNotIn("chroma_db/", dockerignore)
 
     def test_startup_validates_knowledge_base_and_serves_health_and_frontend(self):
-        with patch("backend.main.validate_knowledge_base") as validate:
+        with patch("backend.main.validate_knowledge_base_metadata") as validate:
             with TestClient(app) as client:
                 health = client.get("/api/health")
                 home = client.get("/")

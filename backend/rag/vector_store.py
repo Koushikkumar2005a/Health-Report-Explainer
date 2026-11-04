@@ -207,6 +207,40 @@ def validate_knowledge_base() -> int:
     return count
 
 
+def validate_knowledge_base_metadata() -> int:
+    """Validate the persisted collection without loading the embedding model."""
+    collection = get_collection()
+    count = int(collection.count())
+
+    if count == 0:
+        raise VectorStoreError(
+            f"Chroma collection {COLLECTION_NAME!r} is empty."
+        )
+
+    records = collection.get(include=["metadatas"])
+    categories = {
+        metadata.get("category")
+        for metadata in records.get("metadatas") or []
+        if metadata and metadata.get("category")
+    }
+
+    missing_categories = sorted(set(REQUIRED_CATEGORY_QUERIES) - categories)
+
+    if missing_categories:
+        raise VectorStoreError(
+            "The medical knowledge collection is missing categories: "
+            + ", ".join(missing_categories)
+        )
+
+    logger.info(
+        "Medical knowledge base metadata is ready (chunks=%d, categories=%s).",
+        count,
+        ",".join(sorted(categories)),
+    )
+
+    return count
+
+
 def _reset_store_for_tests() -> None:
     """Reset only the in-process handles; intended for isolated tests."""
     global _client, _collection
