@@ -116,6 +116,40 @@ class RagEvidenceTests(unittest.TestCase):
         self.assertEqual(result["retrieved_sources"][0]["test_name"], "haemoglobin")
         self.assertEqual(len(models.calls), 1)
 
+    def test_rag_prompt_grounds_explanation_in_report_and_matching_passage(self):
+        source_id = "src-hgb"
+        report = "Hemoglobin: 10.2 g/dL (reference range 13.0-17.0 g/dL)."
+        retrieval = _retrieval([("haemoglobin", "CBC", source_id)])
+        passage = "A hemoglobin result below its laboratory reference range is low."
+        retrieval["tests"][0]["passages"][0]["text"] = passage
+        response = json.dumps({
+            "tests": [{
+                "test_name": "haemoglobin",
+                "explanation": (
+                    "రిపోర్టులో హీమోగ్లోబిన్ 10.2 g/dLగా, పేర్కొన్న "
+                    "13.0-17.0 g/dL పరిధికంటే తక్కువగా ఉంది. సరిపోలే వైద్య "
+                    "ఆధారం దీన్ని తక్కువ ఫలితంగా వివరిస్తుంది."
+                ),
+                "source_ids": [source_id],
+            }]
+        })
+
+        result, models = self.run_analysis(
+            retrieval,
+            response,
+            report=report,
+            language="telugu",
+        )
+
+        self.assertEqual(result["retrieval_status"], "success")
+        self.assertEqual(result["language"], "telugu")
+        self.assertIn("రిపోర్టులో", result["explanation"])
+        self.assertIn("10.2 g/dL", result["explanation"])
+        self.assertIn(report, models.calls[0]["contents"])
+        self.assertIn(passage, models.calls[0]["contents"])
+        self.assertIn("only source for what the report states", models.calls[0]["config"]["system_instruction"])
+        self.assertIn("Explain what the specific reported finding means", models.calls[0]["contents"])
+
     def test_kft_evidence_uses_the_strict_rag_branch(self):
         source_id = "src-kft-creatinine"
         retrieval = _retrieval([("creatinine", "KFT", source_id)])
@@ -874,20 +908,19 @@ class RagEvidenceTests(unittest.TestCase):
         self.assertIn('accept=".jpg,.jpeg,.png,.pdf,.docx"', frontend_html)
         self.assertNotIn("'.doc',", frontend_js)
         self.assertIn("data = await analyzeReport('', newLanguage);", frontend_js)
-        for status in (
-            "gemini_only",
-            "empty_knowledge_base",
-            "no_tests_detected",
-            "insufficient_evidence",
-            "success",
-        ):
-            self.assertIn(f"{status}:", frontend_js)
-        self.assertIn(
+        self.assertNotIn("Medical reference status", frontend_js)
+        self.assertNotIn(
             "No matching medical references were found in the existing knowledge base. "
             "This explanation was generated using Gemini based on the uploaded document.",
             frontend_js,
         )
-        self.assertIn("Medical reference retrieval was unavailable.", frontend_js)
+        self.assertNotIn("Medical reference retrieval was unavailable.", frontend_js)
+        self.assertIn("if ([429, 503, 504].includes(response.status))", frontend_js)
+        self.assertIn(
+            "AI generation is temporarily unavailable. Please try again later.",
+            frontend_js,
+        )
+        self.assertIn("state.isProcessing = false;", frontend_js)
 
     def test_legacy_doc_api_upload_is_rejected_before_extraction(self):
         from fastapi.testclient import TestClient

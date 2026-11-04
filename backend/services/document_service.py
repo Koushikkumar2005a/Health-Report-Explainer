@@ -4,15 +4,23 @@ Health Report Explainer - Document Processing Service
 Handles text extraction from various document formats:
 - PDF (text-based and scanned)
 - DOCX
-- Images (JPG, JPEG, PNG) via Gemini Vision
+- Images (JPG, JPEG, PNG) via local Tesseract OCR
 """
 import os
 import logging
 from pypdf import PdfReader
 from docx import Document
 from PIL import Image
+import pytesseract
 from google import genai
 from backend.config import settings
+import pytesseract
+import os
+
+if os.name == "nt":
+    pytesseract.pytesseract.tesseract_cmd = (
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    )
 
 MODEL_NAME = settings.GEMINI_MODEL
 
@@ -67,38 +75,30 @@ class DocumentService:
             raise
 
     async def _extract_from_image(self, file_path: str) -> str:
-        """Extract text from image using Gemini Vision."""
+        """Extract text from an image using local Tesseract OCR."""
         try:
-            img = Image.open(file_path)
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
-
-            if not self.client:
-                raise ValueError("Gemini API is not configured for OCR.")
-
-            response = self.client.models.generate_content(
-                model=MODEL_NAME,
-                contents=[
-                    "Extract ALL text from this medical/health report image. "
-                    "Include every value, label, reference range, unit, patient detail, "
-                    "test name, result, and any other text visible in the image. "
-                    "Maintain the structure and organization of the data as closely as possible. "
-                    "If there are tables, preserve the table structure. "
-                    "Do not interpret or explain the results — just extract the raw text faithfully.",
-                    img,
-                ],
-            )
-
-            text = response.text.strip()
+            with Image.open(file_path) as image:
+                text = pytesseract.image_to_string(image.convert("RGB"))
+            text = text.strip()
             if not text:
-                raise ValueError("No text could be extracted from the image.")
+                raise ValueError(
+                    "No readable text was found in the image. "
+                    "Please upload a clearer image with the report fully visible."
+                )
             return text
-
+        except pytesseract.TesseractNotFoundError as e:
+            logger.error("Local image OCR is unavailable (Tesseract executable not found).")
+            raise ValueError(
+                "Local OCR is not installed or is not available on PATH. "
+                "Install Tesseract OCR, add it to PATH, and restart the backend."
+            ) from e
+        except ValueError:
+            raise
         except Exception as e:
             logger.error("Image OCR failed (%s).", type(e).__name__)
             raise ValueError(
                 "We could not read the uploaded image. "
-                "Please upload a clearer image of your report."
+                "Please upload a valid, clear JPG, JPEG, or PNG report."
             ) from e
 
     async def _extract_from_pdf(self, file_path: str) -> str:

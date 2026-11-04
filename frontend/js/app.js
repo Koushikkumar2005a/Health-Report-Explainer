@@ -1475,21 +1475,29 @@ async function analyzeReport(
         let errorMessage =
             'Unable to analyze the report right now.';
 
-
-        try {
-
-            const errorData =
-                await response.json();
-
+        if ([429, 503, 504].includes(response.status)) {
 
             errorMessage =
-                errorData.detail ||
-                errorData.message ||
-                errorMessage;
+                'AI generation is temporarily unavailable. Please try again later.';
 
-        } catch {
+        } else {
 
-            // Ignore JSON parsing failure
+            try {
+
+                const errorData =
+                    await response.json();
+
+
+                errorMessage =
+                    errorData.detail ||
+                    errorData.message ||
+                    errorMessage;
+
+            } catch {
+
+                // Ignore JSON parsing failure
+
+            }
 
         }
 
@@ -1780,21 +1788,29 @@ function initResultsLanguageSwitcher() {
                         let message =
                             'Translation failed.';
 
-
-                        try {
-
-                            const errorData =
-                                await response.json();
-
+                        if ([429, 503, 504].includes(response.status)) {
 
                             message =
-                                errorData.detail ||
-                                errorData.message ||
-                                message;
+                                'AI generation is temporarily unavailable. Please try again later.';
 
-                        } catch {
+                        } else {
 
-                            // Ignore
+                            try {
+
+                                const errorData =
+                                    await response.json();
+
+
+                                message =
+                                    errorData.detail ||
+                                    errorData.message ||
+                                    message;
+
+                            } catch {
+
+                                // Ignore
+
+                            }
 
                         }
 
@@ -1978,29 +1994,6 @@ function renderResults(analysis) {
                 response.explanation ||
                 'No explanation available.'
             )
-        )
-    );
-
-    const retrievalStatus =
-        response.retrieval_status || 'unavailable';
-    const retrievalMessages = {
-        success: 'Every detected test has a validated supporting medical reference.',
-        gemini_only: 'No matching medical references were found in the existing knowledge base. This explanation was generated using Gemini based on the uploaded document.',
-        empty_knowledge_base: 'The medical reference library is empty. No test-specific interpretation was generated.',
-        no_tests_detected: 'No supported medical test names were detected. No test-specific interpretation was generated.',
-        insufficient_evidence: 'One or more tests did not have validated supporting evidence. Interpretations were withheld for those tests.',
-        used: 'Relevant medical reference passages were retrieved and provided to the explanation model.',
-        no_relevant_context: 'No sufficiently relevant medical reference passages were found for this report.',
-        unavailable: 'Medical reference retrieval was unavailable. Gemini generated this explanation from the uploaded document; no knowledge-base sources were used.'
-    };
-    grid.appendChild(
-        createCard(
-            '📚',
-            'Medical reference status',
-            `<p class="summary-text">${escapeHtml(
-                retrievalMessages[retrievalStatus] ||
-                retrievalMessages.unavailable
-            )}</p>`
         )
     );
 

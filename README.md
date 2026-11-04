@@ -9,7 +9,7 @@ An AI-powered web application that explains medical/health reports in simple, ea
 - **Upload Medical Reports**: JPG, JPEG, PNG, PDF, DOCX (up to 10 MB; legacy DOC files are not supported)
 - **AI-Powered Analysis**: Uses Google Gemini to analyze and explain reports
 - **Multi-Language Support**: English, Telugu, Tamil, Hindi, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia
-- **Smart OCR**: Reads scanned reports and images using Gemini Vision
+- **Smart OCR**: Reads report images locally using Tesseract OCR
 - **Attention Indicators**: Normal / Attention / Discuss with Doctor / Urgent Attention
 - **Doctor Discussion Guide**: AI-generated questions to ask your doctor
 - **Privacy First**: Reports are processed and deleted, not stored permanently
@@ -26,7 +26,7 @@ An AI-powered web application that explains medical/health reports in simple, ea
 | **AI** | Google Gemini API via the `google-genai` SDK; primary and fallback models are configured in `.env` |
 | **PDF Processing** | PyMuPDF for reference indexing; pypdf for uploaded reports |
 | **DOCX Processing** | python-docx |
-| **Image/OCR** | Gemini Vision API + Pillow |
+| **Image/OCR** | Tesseract OCR via pytesseract + Pillow; scanned PDF fallback uses Gemini Vision |
 | **Medical reference RAG** | Sentence Transformers (`intfloat/multilingual-e5-base`) + persistent ChromaDB |
 
 ---
@@ -68,13 +68,33 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 5: Create the `.env` file
+### Step 5: Install Tesseract OCR
+
+Image OCR uses the local Tesseract executable; installing the Python requirements alone does not install it.
+
+**Windows:**
+
+1. Install Tesseract OCR using the [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki).
+2. During installation, enable the option to add Tesseract to `PATH`. If it was not added automatically, add the installation folder (usually `C:\Program Files\Tesseract-OCR`) to your user or system `PATH`.
+3. Open a new terminal and verify the installation:
+
+   ```powershell
+   tesseract --version
+   ```
+
+**macOS:** `brew install tesseract`
+
+**Debian/Ubuntu:** `sudo apt install tesseract-ocr`
+
+Restart the terminal or backend after changing `PATH`.
+
+### Step 6: Create the `.env` file
 
 ```bash
 copy .env.example .env
 ```
 
-### Step 6: Add your Gemini API Key
+### Step 7: Add your Gemini API Key
 
 Open `.env` and replace `your_gemini_api_key_here` with your actual Gemini API key:
 
@@ -157,7 +177,7 @@ Upload → Validate → Extract Text → AI Analysis → Structured JSON → Ren
 2. **Extract**: Text is extracted based on file type:
    - **PDF**: Existing PDF extraction; falls back to Gemini Vision for scanned PDFs. Reference PDFs are extracted with PyMuPDF during knowledge-base indexing.
    - **DOCX**: python-docx paragraph and table extraction
-   - **Images**: Gemini Vision API reads the image
+   - **JPG, JPEG, PNG**: Local Tesseract OCR reads the image; the image is not sent to Gemini for text extraction
 3. **Analyze**: Extracted text + language → test-scoped retrieval → Gemini JSON explanations with validated source IDs
 4. **Display**: Structured JSON response rendered as cards in the dashboard
 5. **Translate**: Language switch re-analyzes from extracted text for best quality
