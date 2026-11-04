@@ -99,7 +99,11 @@ class RagPipelineTests(unittest.TestCase):
 
     def test_embedding_model_is_initialized_once(self):
         factory_calls = []
-        factory = lambda name: factory_calls.append(name) or self.fake_model
+
+        def factory(name, **kwargs):
+            factory_calls.append((name, kwargs))
+            return self.fake_model
+
         with (
             patch.object(embeddings, "_model", None),
             patch.dict("sys.modules", {"sentence_transformers": SimpleNamespace(SentenceTransformer=factory)}),
@@ -107,7 +111,13 @@ class RagPipelineTests(unittest.TestCase):
             first = embeddings.get_embedding_model()
             second = embeddings.get_embedding_model()
         self.assertIs(first, second)
-        self.assertEqual(factory_calls, ["intfloat/multilingual-e5-base"])
+        self.assertEqual(
+            factory_calls,
+            [(
+                "intfloat/multilingual-e5-base",
+                {"revision": embeddings.MODEL_REVISION},
+            )],
+        )
 
     def test_embedding_prefix_dimension_and_normalization(self):
         passage = embeddings.embed_documents(["reference text"])

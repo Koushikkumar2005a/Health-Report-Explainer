@@ -8,9 +8,7 @@ __pycache__/
 # Uploads
 temp_uploads/
 
-# Medical reference files and generated vector data
-data/chroma_db/*
-!data/chroma_db/.gitkeep
+# Medical reference source files
 data/medical_knowledge/processed/*
 !data/medical_knowledge/processed/.gitkeep
 data/medical_knowledge/raw/**/*.pdf
@@ -23,3 +21,4 @@ data/medical_knowledge/raw/**/*.txt
 # OS
 .DS_Store
 Thumbs.db
+uploads/

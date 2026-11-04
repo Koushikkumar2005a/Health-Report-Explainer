@@ -1,0 +1,12 @@
+
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.git/
+uploads/
+temp_uploads/
+data/medical_knowledge/raw/
+data/medical_knowledge/processed/

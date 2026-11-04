@@ -118,7 +118,7 @@ data/medical_knowledge/raw/
 └── Thyroid/
 ```
 
-Subfolders are scanned recursively. Index only trusted reference materials; uploaded patient reports are never added to this collection. Source documents and generated ChromaDB files are excluded from Git.
+Subfolders are scanned recursively. Index only trusted reference materials; uploaded patient reports are never added to this collection. Source reference documents remain excluded from Git. The generated `data/chroma_db/` index is intended to be included in Git for Docker deployments; it contains extracted reference passages as well as vectors, so only publish it when you have permission to redistribute that content.
 
 Build or incrementally update the persistent collection:
 
@@ -133,6 +133,31 @@ python scripts/test_retrieval.py
 ```
 
 Chunking and retrieval can be configured with `RAG_CHUNK_SIZE` (default `1000`), `RAG_CHUNK_OVERLAP` (`150`), `RAG_TOP_K` (`4`), `RAG_RELEVANCE_THRESHOLD` (`0.25`), and `RAG_CHROMA_PATH` (`data/chroma_db`). Retrieval status distinguishes an empty knowledge base, no detected tests, insufficient evidence, and successful per-test evidence validation. If evidence is unavailable, unsupported test interpretations are withheld.
+
+## 🚀 Deploying to Render with Docker
+
+The Docker image uses Python 3.11, installs Tesseract with English OCR data, and pre-downloads `intfloat/multilingual-e5-base`. The existing Chroma collection is copied into the image; the image build and application startup both fail if the collection is empty, missing any of the six categories, or cannot retrieve a passage for a category. The database is not rebuilt on each restart.
+
+Before deploying, include the existing files under `data/chroma_db/` in your Git commit. They are no longer ignored by Git or Docker. The raw reference documents remain ignored. Review the database's source and redistribution rights before publishing it.
+
+Create a Render **Web Service** from this repository and select **Docker**. Configure:
+
+| Variable | Required | Default / purpose |
+|---|---:|---|
+| `GEMINI_API_KEY` | Yes for AI explanations | Store the key as a Render secret; never commit it. |
+| `GEMINI_MODEL` | No | `gemini-3.8-flash` |
+| `GEMINI_FALLBACK_MODEL` | No | `gemini-3.5-flash-lite` |
+| `RAG_CHROMA_PATH` | No | `data/chroma_db` |
+| `RAG_CHUNK_SIZE` | No | `1000` |
+| `RAG_CHUNK_OVERLAP` | No | `150` |
+| `RAG_TOP_K` | No | `4` |
+| `RAG_RELEVANCE_THRESHOLD` | No | `0.25` |
+
+Render supplies `PORT`; the container binds Uvicorn to `0.0.0.0` on that port. After deployment, verify `/api/health` and the Render startup log message confirming the knowledge-base chunk and category counts.
+
+The cached E5 model is about 1.13 GB on disk and requires additional runtime memory for Python, PyTorch, ChromaDB, and request processing. Render's Free plan has 512 MB RAM and cannot reliably run this model; use at least the 2 GB `1c-2g` compute plan. The Docker image includes the pre-downloaded model so startup does not depend on downloading it from the Hugging Face Hub.
+
+The knowledge index is baked into the image and is therefore restored on each deploy. Runtime filesystem changes are not durable on Render's Free plan; update the index locally and redeploy rather than modifying it at runtime.
 
 ---
 

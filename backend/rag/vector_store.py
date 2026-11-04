@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,14 @@ from backend.rag.embeddings import E5EmbeddingFunction, embed_documents
 from backend.config import settings
 
 COLLECTION_NAME = "medical_knowledge"
+REQUIRED_CATEGORY_QUERIES = {
+    "CBC": "haemoglobin blood test",
+    "Diabetes": "blood glucose test",
+    "KFT": "creatinine kidney function",
+    "LFT": "ALT liver function",
+    "Lipid_Profile": "cholesterol lipid profile",
+    "Thyroid": "TSH thyroid hormone",
+}
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _configured_path = Path(settings.RAG_CHROMA_PATH)
 CHROMA_PATH = (
@@ -19,6 +28,7 @@ CHROMA_PATH = (
 _client = None
 _collection = None
 _store_lock = threading.Lock()
+logger = logging.getLogger(__name__)
 
 
 class VectorStoreError(RuntimeError):
@@ -153,6 +163,48 @@ def query_vectors(
                 }
             )
     return results
+
+
+def validate_knowledge_base() -> int:
+    """Fail startup unless the persisted collection is populated and retrievable."""
+    collection = get_collection()
+    count = int(collection.count())
+    if count == 0:
+        raise VectorStoreError(
+            f"Chroma collection {COLLECTION_NAME!r} is empty. "
+            "Deploy the prebuilt medical knowledge database."
+        )
+
+    records = collection.get(include=["metadatas"])
+    categories = {
+        metadata.get("category")
+        for metadata in records.get("metadatas") or []
+        if metadata and metadata.get("category")
+    }
+    missing_categories = sorted(set(REQUIRED_CATEGORY_QUERIES) - categories)
+    if missing_categories:
+        raise VectorStoreError(
+            "The medical knowledge collection is missing categories: "
+            + ", ".join(missing_categories)
+        )
+
+    for category, query in REQUIRED_CATEGORY_QUERIES.items():
+        results = query_vectors([query], top_k=1, category=category)
+        if (
+            not results
+            or not results[0]["text"].strip()
+            or results[0]["metadata"].get("category") != category
+        ):
+            raise VectorStoreError(
+                f"Medical knowledge retrieval returned no passage for {category}."
+            )
+
+    logger.info(
+        "Medical knowledge base is ready (chunks=%d, categories=%s).",
+        count,
+        ",".join(sorted(categories)),
+    )
+    return count
 
 
 def _reset_store_for_tests() -> None:

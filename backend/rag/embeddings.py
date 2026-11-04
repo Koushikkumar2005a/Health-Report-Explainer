@@ -6,6 +6,7 @@ import threading
 from collections.abc import Sequence
 
 MODEL_NAME = "intfloat/multilingual-e5-base"
+MODEL_REVISION = "d128750597153bb5987e10b1c3493a34e5a4502a"
 EMBEDDING_DIMENSION = 768
 
 _model = None
@@ -29,7 +30,7 @@ def get_embedding_model():
                         "sentence-transformers is required for medical reference retrieval."
                     ) from exc
 
-                _model = SentenceTransformer(MODEL_NAME)
+                _model = SentenceTransformer(MODEL_NAME, revision=MODEL_REVISION)
     return _model
 
 

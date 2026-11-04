@@ -3,14 +3,18 @@ Health Report Explainer - Main Application
 
 FastAPI backend server for the Health Report Explainer application.
 """
-import os
 import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+
 from backend.config import settings
-from backend.routes import upload, analysis
+from backend.rag.vector_store import validate_knowledge_base
+from backend.routes import analysis, upload
 
 # Configure logging
 logging.basicConfig(
@@ -19,18 +23,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Validate the bundled medical knowledge index before serving requests."""
+    try:
+        validate_knowledge_base()
+    except Exception:
+        logger.exception(
+            "Medical knowledge-base validation failed; application startup aborted."
+        )
+        raise
+    yield
+
+
 # Create FastAPI app
 app = FastAPI(
     title="Health Report Explainer",
     description="AI-powered medical report explanation tool",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -6,21 +6,31 @@ Handles text extraction from various document formats:
 - DOCX
 - Images (JPG, JPEG, PNG) via local Tesseract OCR
 """
-import os
 import logging
+import os
+import shutil
+
+import pytesseract
 from pypdf import PdfReader
 from docx import Document
 from PIL import Image
-import pytesseract
+
 from google import genai
 from backend.config import settings
-import pytesseract
-import os
 
 if os.name == "nt":
     pytesseract.pytesseract.tesseract_cmd = (
         r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     )
+else:
+    tesseract_path = shutil.which("tesseract")
+
+    if tesseract_path:
+        pytesseract.pytesseract.tesseract_cmd = tesseract_path
+    else:
+        raise RuntimeError(
+            "Tesseract OCR is not installed or not available in PATH."
+        )
 
 MODEL_NAME = settings.GEMINI_MODEL
 
